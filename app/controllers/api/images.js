@@ -1,18 +1,20 @@
 var express = require('express'),
     router = express.Router(),
     fs = require('fs-extra'),
-    path = require('path');
+    path = require('path'),
+    request = require('request');
 
-var imgFolder = path.join(__dirname, '../../../data/img');
+var port = 3000;
+
+var imgFolder = path.join(__dirname, '../../../data/userdata/img');
 
 module.exports = function (app) {
     app.use('/api/images', router);
 };
 
 router.get('/:name', (req, res, next) => {
-    // TODO: Not Implemented.
-    let imgName = req.params.name;
-    res.send(null);
+    let newUrl = req.protocol + '://' + req.host + ':' + port + '/img/' + req.params.name;
+    request(newUrl).pipe(res);
 });
 
 router.post('/', (req, res, next) => {
@@ -30,7 +32,7 @@ router.post('/', (req, res, next) => {
         file.pipe(fstream);
         fstream.on('close', function () {    
             console.log("Upload Finished of " + filename);              
-            res.send({filename: uniqueFilename});
+            res.send({filename: '/api/images/' + uniqueFilename});
         });
     });
 });

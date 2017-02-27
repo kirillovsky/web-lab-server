@@ -27,6 +27,7 @@ module.exports = function(app, config) {
     app.use(cookieParser());
     app.use(compress());
     app.use(express.static(config.root + '/public'));
+    app.use(express.static(config.root + '/data/userdata'));
     app.use(express.static(config.root + '/client/dist'));
     app.use(methodOverride());
     app.use(busboy());
