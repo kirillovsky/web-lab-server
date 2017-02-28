@@ -1,11 +1,11 @@
 var express = require('express'),
     router = express.Router(),
-    mongojs = require('mongojs'),
+    SongsRepository = require('../../dal/songs-repository'),
     Song = require('../../models/song');
 
-var db = mongojs('mongodb://localhost:27017/myproject', ['songs']);
-
 var defaultSongImage = '/api/images/default.png';
+var songsRepository = new SongsRepository();
+
 
 module.exports = function (app) {
     app.use('/api/songs', router);
@@ -18,39 +18,40 @@ function normalizeId(song) {
     return result;
 }
 
+function handleError(res, err) {
+    res.send(500, err);
+}
+
 router.get('/', (req, res, next) => {
-    db.songs.find((err, songs) => {
-        if(err) {
-            res.send(500, err);
-        } else {
-            songs = songs.map(s => normalizeId(s));
-            res.json(songs);
-        }
-    });
+    songsRepository.getAll().then(
+        songs => res.json(songs),
+        err => handleError(res, err)
+    );
 });
 
-router.get('/collection', (req, res, next) => {
+router.get('/removeAll', (req, res, next) => {
     // TODO: Not Implemented.
+    res.send('Commented');
     return;
-    db.songs.find((err, songs) => {
-        if(err) {
-            res.send(500, err);
-        } else {
-            //songs = songs.map(s => normalizeId(s));
-            //res.json(songs);
-            songs.forEach(s => {
-                let str = s._id.toString();
-                let idObj = {_id:  new mongojs.ObjectID(str) };
-                db.songs.remove(idObj, (err, result) => {
-                    if(err){
-                        console.log('fail');
-                    } else {
-                        console.log(result);
-                    }
-                });
-            });
-        }
-    });
+    // db.songs.find((err, songs) => {
+    //     if(err) {
+    //         res.send(500, err);
+    //     } else {
+    //         //songs = songs.map(s => normalizeId(s));
+    //         //res.json(songs);
+    //         songs.forEach(s => {
+    //             let str = s._id.toString();
+    //             let idObj = {_id:  new mongojs.ObjectID(str) };
+    //             db.songs.remove(idObj, (err, result) => {
+    //                 if(err){
+    //                     console.log('fail');
+    //                 } else {
+    //                     console.log(result);
+    //                 }
+    //             });
+    //         });
+    //     }
+    // });
 });
 
 router.post('/', (req, res, next) => {
@@ -58,41 +59,19 @@ router.post('/', (req, res, next) => {
     if(!newSong.imageSrc) {
         newSong.imageSrc = defaultSongImage;
     }
-    db.songs.save(newSong, (err, song) => {
-        if(err) {
-            res.send(500, err);
-        } else {
-            song = normalizeId(song);
-            res.json(song);
-        }
-    });
+    songsRepository.save(newSong).then(
+        song => res.json(song),
+        err => handleError(res, err)
+    );
 });
 
 router.put('/:id', (req, res, next) => {
     let song_id = req.params.id;
-    let idObj = {_id:  new mongojs.ObjectID(song_id) };
     let patch = req.body;
-    db.songs.findOne(idObj, (err, song) => {
-        if(err) {
-            res.send(500, err);
-        } else {
-            if(patch.userRating) {
-                patch.globalRating = (song.globalRating*song.ratesCount + patch.userRating) / (song.ratesCount + 1);
-                patch.ratesCount = song.ratesCount + 1;
-            }
-            Object.assign(song, patch);
-            db.songs.update(idObj, song, (err, result) => {
-                if(err) {
-                    res.send(500, err);
-                } else {
-                    song = normalizeId(song);
-                    res.json(song);
-                }
-            });
-        }
-    });
-
-    
+    songsRepository.update(song_id, patch).then(
+        song => res.json(song),
+        err => handleError(res, err)
+    );
 });
 
 router.post('/:id/addToCollection', (req, res, next) => {

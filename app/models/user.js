@@ -1,8 +1,10 @@
 function User(opts) {
     if (!opts) opts = {};
-    this.name = opts.name || '';
-    this.login = opts.login || '';
-    this.password = opts.password || '';
+    this.id = undefined
+    this.name = opts.name || undefined;
+    this.login = opts.login || undefined;
+    this.password = opts.password || undefined;
+    this.songsIds = opts.songsIds || [];
 }
 
 module.exports = User;
