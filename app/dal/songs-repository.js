@@ -5,6 +5,10 @@ class SongsRepository extends Repository {
     constructor() {
         super('songs');
     }
+    
+    _getEntity(entity) {
+        return new Song(entity);
+     }
 
     // TODO: Move to Service Layer.
     update(id, patch) {

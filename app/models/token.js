@@ -1,6 +1,9 @@
-function Token (opts) {
-    this.value = opts.value;
-    this.expires = opts.expires;
+class Token {
+    constructor(opts) {
+        if (!opts) opts = {};
+        this.value = opts.value;
+        this.expires = opts.expires;
+    }
 }
 
 Token.generate = () => {

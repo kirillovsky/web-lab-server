@@ -1,69 +1,87 @@
-var mongojs = require('mongojs'),
-    Song = require('../models/song');
+var mongojs = require('mongojs');
 
-function normalizeId(song) {
-    var result = song;
-    result.id = result._id;
-    result._id = undefined;
-    return result;
+function normalizeId(entity) {
+    var result = entity;
+    entity.id = entity._id.toString();
+    entity._id = undefined;
+    return entity;
 }
 
 class Repository {
-    constructor(entity) {
-        this.db = mongojs('mongodb://localhost:27017/myproject', [entity]);
-        this.entity = entity;
+    constructor(collectionName) {
+        this.db = mongojs('mongodb://localhost:27017/myproject', [collectionName]);
+        this.collectionName = collectionName;
+    }
+
+    findOne(filter) {
+        return new Promise((resolve, reject) => {
+            this.db[this.collectionName].findOne(filter, (err, entity) => {
+                if(err) {
+                    reject(err);
+                } else {
+                    if(entity) {
+                        entity = normalizeId(entity);
+                    }
+                    resolve(entity);
+                }
+            });
+        });
     }
 
     getAll() {
         return new Promise((resolve, reject) => {
-            this.db[this.entity].find((err, songs) => {
+            this.db[this.collectionName].find((err, entities) => {
                 if(err) {
                     reject(err);
                 } else {
-                    songs = songs.map(s => normalizeId(s));
-                    resolve(songs);
+                    entities = entities.map(e => normalizeId(e));
+                    resolve(entities);
                 }
             });
         });
     }
 
     getAllBy(ids) {
-        return this.getAll().then(songs => {
-            return songs.filter(s => ids.contains(s.id));
+        return this.getAll().then(entities => {
+            return entities.filter(e => ids.indexOf(e.id.toString()) != -1);
         });
     }
 
     getBy(id) {
         return this._getBy(id)
-            .then(song => normalizeId(song));
+            .then(entity => normalizeId(entity));
     }
 
 
-    save(newSong) {
+    save(newEntity) {
+        newEntity = this._getEntity(newEntity);
         return new Promise((resolve, reject) => {
-            this.db[this.entity].save(newSong, (err, song) => {
+            this.db[this.collectionName].save(newEntity, (err, entity) => {
                 if(err) {
                     reject(err);
                 } else {
-                    song = normalizeId(song);
-                    resolve(song);
+                    entity = normalizeId(entity);
+                    resolve(entity);
                 }
             });
         });
     }
 
     update(id, patch) {
+        delete patch['id'];
+        delete patch['_id'];
+
         // TODO: Разобраться, как запилить patch в моне.
-        return this._getBy(id).then((song) => {
+        return this._getBy(id).then((entity) => {
             return new Promise((resolve, reject) => {
                 let idObj = {_id: new mongojs.ObjectID(id) };
-                Object.assign(song, patch);
-                this.db[this.entity].update(idObj, song, (err, result) => {
+                Object.assign(entity, patch);
+                this.db[this.collectionName].update(idObj, entity, (err, result) => {
                     if(err) {
                         reject(err);
                     } else {
-                        song = normalizeId(song);
-                        resolve(song);
+                        entity = normalizeId(entity);
+                        resolve(entity);
                     }
                 });
             });
@@ -73,7 +91,7 @@ class Repository {
     _getBy(id) {
         return new Promise((resolve, reject) => {
             let idObj = {_id:  new mongojs.ObjectID(id) };
-            this.db[this.entity].findOne(idObj, (err, song) => {
+            this.db[this.collectionName].findOne(idObj, (err, song) => {
                 if(err) {
                     reject(err);
                 } else {
@@ -82,6 +100,10 @@ class Repository {
             });
         });
     }
+
+    _getEntity(entity) { }
+
+    _copyEntity(dest, src) { }
 }
 
 module.exports = Repository;

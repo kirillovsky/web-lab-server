@@ -11,13 +11,6 @@ module.exports = function (app) {
     app.use('/api/songs', router);
 };
 
-function normalizeId(song) {
-    var result = song;
-    result.id = result._id;
-    result._id = undefined;
-    return result;
-}
-
 function handleError(res, err) {
     res.send(500, err);
 }
@@ -60,7 +53,7 @@ router.post('/', (req, res, next) => {
         newSong.imageSrc = defaultSongImage;
     }
     songsRepository.save(newSong).then(
-        song => res.json(song),
+        song => res.json(201, song),
         err => handleError(res, err)
     );
 });
@@ -72,16 +65,4 @@ router.put('/:id', (req, res, next) => {
         song => res.json(song),
         err => handleError(res, err)
     );
-});
-
-router.post('/:id/addToCollection', (req, res, next) => {
-    // TODO: Not Implemented.
-    let song_id = req.params.id;
-    res.send(null);
-});
-
-router.post('/:id/removeFromCollection', (req, res, next) => {
-    // TODO: Not Implemented.
-    let song_id = req.params.id;
-    res.send(null);
 });
