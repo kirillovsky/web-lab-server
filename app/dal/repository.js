@@ -4,6 +4,7 @@ function normalizeId(entity) {
     var result = entity;
     entity.id = entity._id.toString();
     entity._id = undefined;
+    delete entity._id;
     return entity;
 }
 
@@ -67,15 +68,12 @@ class Repository {
         });
     }
 
-    update(id, patch) {
-        delete patch['id'];
-        delete patch['_id'];
-
+    updateBy(id, patch) {
         // TODO: Разобраться, как запилить patch в моне.
         return this._getBy(id).then((entity) => {
             return new Promise((resolve, reject) => {
                 let idObj = {_id: new mongojs.ObjectID(id) };
-                Object.assign(entity, patch);
+                this._copyEntity(entity, patch);
                 this.db[this.collectionName].update(idObj, entity, (err, result) => {
                     if(err) {
                         reject(err);
@@ -84,6 +82,19 @@ class Repository {
                         resolve(entity);
                     }
                 });
+            });
+        });
+    }
+
+    removeBy(id) {
+        let idObj = {_id:  new mongojs.ObjectID(id) };
+        return new Promise((resolve, reject) => {
+            this.db[this.collectionName].remove(idObj, (err, result) => {
+                if(err){
+                    reject(err);
+                } else {
+                    resolve();
+                }
             });
         });
     }
@@ -103,7 +114,12 @@ class Repository {
 
     _getEntity(entity) { }
 
-    _copyEntity(dest, src) { }
+    _copyEntity(dest, src) {
+        delete src['id'];
+        delete src['_id'];
+        // TODO: Заменить на переопределение в детях, ибо не безопасно.
+        Object.assign(dest, src);
+    }
 }
 
 module.exports = Repository;

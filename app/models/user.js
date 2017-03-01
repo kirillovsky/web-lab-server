@@ -4,7 +4,7 @@ function User(opts) {
     this.name = opts.name || undefined;
     this.login = opts.login || undefined;
     this.password = opts.password || undefined;
-    this.songsIds = opts.songsIds || [];
+    this.songRefs = opts.songRefs || [];
 }
 
 module.exports = User;

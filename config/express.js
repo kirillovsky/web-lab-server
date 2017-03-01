@@ -9,6 +9,12 @@ var compress = require('compression');
 var methodOverride = require('method-override');
 var busboy = require('connect-busboy'); //middleware for form/file upload
 
+var AuthService = require('../app/services/auth-service');
+var userController = require('../app/controllers/api/user');
+var songsController = require('../app/controllers/api/songs');
+var imagesController = require('../app/controllers/api/images');
+
+
 module.exports = function(app, config) {
     var env = process.env.NODE_ENV || 'development';
     app.locals.ENV = env;
@@ -36,10 +42,12 @@ module.exports = function(app, config) {
     controllers.forEach(function (controller) {
         require(controller)(app);
     });
-    var apiControllers = glob.sync(config.root + '/app/controllers/api/*.js');
-    apiControllers.forEach(function (controller) {
-        require(controller)(app);
-    });
+    
+    let authService = new AuthService();
+    userController(app, authService);
+    songsController(app, authService);
+    imagesController(app);
+
 
     app.use(function (req, res, next) {
         var err = new Error('Not Found');

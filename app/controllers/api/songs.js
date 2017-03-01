@@ -1,50 +1,46 @@
 var express = require('express'),
     router = express.Router(),
     SongsRepository = require('../../dal/songs-repository'),
-    Song = require('../../models/song');
+    Song = require('../../models/song'),
+    SongViewModel = require('../../view-models/song-viewmodel');
 
 var defaultSongImage = '/api/images/default.png';
 var songsRepository = new SongsRepository();
 
-
-module.exports = function (app) {
+var authService;
+module.exports = function (app, _authService) {
     app.use('/api/songs', router);
+    authService = _authService;
 };
 
 function handleError(res, err) {
     res.send(500, err);
 }
 
-router.get('/', (req, res, next) => {
-    songsRepository.getAll().then(
-        songs => res.json(songs),
-        err => handleError(res, err)
-    );
+// TOOLS.
+function removeAllSongs() {
+    songsRepository.getAll().then(songs => {
+        songs.forEach(song => {
+            songsRepository.removeBy(song.id);
+        });
+    });
+}
+router.get('/removeAll', (req, res, next) => {
+    removeAllSongs();
+    res.send('all songs removed');
 });
 
-router.get('/removeAll', (req, res, next) => {
-    // TODO: Not Implemented.
-    res.send('Commented');
-    return;
-    // db.songs.find((err, songs) => {
-    //     if(err) {
-    //         res.send(500, err);
-    //     } else {
-    //         //songs = songs.map(s => normalizeId(s));
-    //         //res.json(songs);
-    //         songs.forEach(s => {
-    //             let str = s._id.toString();
-    //             let idObj = {_id:  new mongojs.ObjectID(str) };
-    //             db.songs.remove(idObj, (err, result) => {
-    //                 if(err){
-    //                     console.log('fail');
-    //                 } else {
-    //                     console.log(result);
-    //                 }
-    //             });
-    //         });
-    //     }
-    // });
+router.get('/', (req, res, next) => {
+    songsRepository.getAll().then(
+        songs => {
+            let user = authService.getCurrentUser(req);
+            if(user) {
+                songs = songs.map(s => SongViewModel.fromSongAndUser(s, user));
+            }
+            res.json(songs)
+        },
+        err => handleError(res, err)
+    );
 });
 
 router.post('/', (req, res, next) => {
@@ -58,11 +54,17 @@ router.post('/', (req, res, next) => {
     );
 });
 
+// Не используется.
 router.put('/:id', (req, res, next) => {
-    let song_id = req.params.id;
-    let patch = req.body;
-    songsRepository.update(song_id, patch).then(
-        song => res.json(song),
-        err => handleError(res, err)
-    );
+    let user = authService.getCurrentUser(req);
+    if(user) {
+        let song_id = req.params.id;
+        let patch = req.body;
+        songsRepository.updateBy(song_id, patch).then(
+            song => res.json(song),
+            err => handleError(res, err)
+        );
+    } else {
+        res.send(401, 'Invalid Token');
+    }
 });

@@ -2,61 +2,42 @@ var express = require('express'),
     router = express.Router(),
     Song = require('../../models/song'),
     User = require('../../models/user'),
+    SongViewModel = require('../../view-models/song-viewmodel'),
     UserViewModel = require('../../view-models/user-viewmodel'),
     SongsRepository = require('../../dal/songs-repository'),
     UsersRepository = require('../../dal/users-repository'),
+    UserService = require('../../services/user-service'),
     Token = require('../../models/token');
 
-module.exports = function (app) {
+var authService;
+module.exports = function (app, _authService) {
     app.use('/api/user', router);
+    authService = _authService;
 };
 
 var songsRepository = new SongsRepository();
 var usersRepository = new UsersRepository();
+var userService = new UserService();
 
 function handleError(res, err) {
     res.send(500, err);
 }
 
-usersLoginInfo = [];
-
-function getCurrentUser(req) {
-    let token = req.headers['token'];
-    let userLoginInfo = usersLoginInfo[token];
-    if(userLoginInfo) {
-        let user = userLoginInfo.user;
-        //TODO: Если протух -- удаляем и возвращаем null.
-        return user;
-    } else {
-        return null;
-    }
+// TOOLS.
+function removeAllUsers() {
+    usersRepository.getAll().then(users => {
+        users.forEach(user => {
+            usersRepository.removeBy(user.id);
+        });
+    });
 }
-
-function authenticateUser(user) {
-    let token = Token.generate();
-    usersLoginInfo[token.value] = {
-        user: user,
-        token: token
-    };
-    return {token: token, username: user.name};
-}
-
-function updateUserLoginInfo(req) {
-    let token = req.headers['token'];
-    let loginInfo = usersLoginInfo[token];
-    if(loginInfo) {
-        let user = loginInfo.user;
-        usersRepository.getBy(user.id)
-            .then(newUser => loginInfo.user = newUser);
-    }
-}
-
-function logoutUser(tokenVal) {
-    usersTokens[tokenVal] = undefined;
-}
+router.get('/removeAll', (req, res, next) => {
+    removeAllUsers();
+    res.send('all users removed');
+});
 
 router.get('/', (req, res, next) => {
-    let user = getCurrentUser(req);
+    let user = authService.getCurrentUser(req);
     if(user){
         res.json(new UserViewModel(user));
     } else {
@@ -80,7 +61,7 @@ router.post('/login', (req, res, next) => {
             if(!user) {
                 res.send(401, 'Неверная пара логин/пароль');
             } else {
-                let authResult = authenticateUser(user);
+                let authResult = authService.authenticateUser(user);
                 res.json(authResult);
             }
         },
@@ -89,25 +70,24 @@ router.post('/login', (req, res, next) => {
 });
 
 router.post('/logout', (req, res, next) => {
-    let token = req.headers['token'];
-    logoutUser(token);
+    authService.logoutUser(req);
     res.send(200);
 });
 
 router.post('/register', (req, res, next) => {
     let userObj = new User(req.body);
     usersRepository.save(userObj).then(user => {
-        let authResult = authenticateUser(user);
+        let authResult = authService.authenticateUser(user);
         res.json(201, authResult);
     })
     .catch(err => handleError(res, err));
 });
 
 router.get('/songs', (req, res, next) => {
-    let user = getCurrentUser(req);
+    let user = authService.getCurrentUser(req);
     if(user){
-        songsRepository.getAllBy(user.songsIds)
-            .then(songs => songs.map(s => {s.inCollection = true; return s;}))
+        songsRepository.getAllBy(user.songRefs.map(s => s.id))
+            .then(songs => songs.map(s => SongViewModel.fromSongAndUser(s, user)))
             .then(songs =>res.json(songs));
     } else {
         res.send(401, 'Incorrect Token');
@@ -115,24 +95,37 @@ router.get('/songs', (req, res, next) => {
 });
 
 router.post('/songs/:id', (req, res, next) => {
-    let user = getCurrentUser(req);
+    let user = authService.getCurrentUser(req);
     if(user){
-        let song_id = req.params.id;
-        usersRepository.addSong(user.id, song_id)
-            .then(songs =>res.json({}))
-            .then(() => updateUserLoginInfo(req))
+        let songId = req.params.id;
+        userService.addSong(user.id, songId)
+            .then(songs => res.json({}))
+            .then(() => authService.updateUserLoginInfo(req));
+    } else {
+        res.send(401, 'Incorrect Token');
+    }
+});
+
+router.post('/songs/:id/rate/:newRating', (req, res, next) => {
+    let user = authService.getCurrentUser(req);
+    if(user){
+        let songId = req.params.id;
+        let newRating = req.params.newRating;
+        userService.updateUserRating(user, songId, newRating)
+            .then(song => res.json(SongViewModel.fromSongAndUser(song, user)))
+            .catch(err => handleError(res, err));
     } else {
         res.send(401, 'Incorrect Token');
     }
 });
 
 router.delete('/songs/:id', (req, res, next) => {
-    let user = getCurrentUser(req);
+    let user = authService.getCurrentUser(req);
     if(user){
         let song_id = req.params.id;
-        usersRepository.removeSong(user.id, song_id)
+        userService.removeSong(user.id, song_id)
             .then(() =>res.json({}))
-            .then(() => updateUserLoginInfo(req));
+            .then(() => authService.updateUserLoginInfo(req));
     } else {
         res.send(401, 'Incorrect Token');
     }
