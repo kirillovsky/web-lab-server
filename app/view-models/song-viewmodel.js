@@ -38,18 +38,18 @@ function SongViewModel(opts) {
 
 SongViewModel.fromSongAndUser = (song, user) => {
     let result = new SongViewModel(song);
-    let songRef = user.songRefs.find(s => s.id == song.id);
-    let userRate = song.userRates.find(r => r.userId == user.id);
 
-    if(songRef) {
-        result.inCollection = songRef.inCollection || false;
-    } else {
-        result.inCollection = false;
+    result.inCollection = false;
+    if(user) {
+        let userRate = song.userRates.find(r => r.userId == user.id);
+        result.userRating = userRate ? userRate.rate : 0;
+
+        let songRef = user.songRefs.find(s => s.id == song.id);
+        if(songRef) {
+            result.inCollection = songRef.inCollection || false;
+        }
     }
-
-    result.userRating = userRate ? userRate.rate : 0;
     result.ratesCount = song.userRates.length;
-
     return result;
 }
 

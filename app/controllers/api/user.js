@@ -87,6 +87,7 @@ router.get('/songs', (req, res, next) => {
     let user = authService.getCurrentUser(req);
     if(user){
         songsRepository.getAllBy(user.songRefs.map(s => s.id))
+            .then(songs => songs.sort((a, b) => b.globalRating - a.globalRating))
             .then(songs => songs.map(s => SongViewModel.fromSongAndUser(s, user)))
             .then(songs =>res.json(songs));
     } else {
