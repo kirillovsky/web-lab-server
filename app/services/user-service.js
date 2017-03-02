@@ -22,7 +22,7 @@ class UserService {
     }
 
     addSong(userId, songId) {
-        return this._getBy(userId).then(user => {
+        return usersRepository.getBy(userId).then(user => {
             if(user.songRefs.find(s => s.id == songId) == null) {
                 let songRef = new SongRef({
                     id: songId, 
@@ -30,19 +30,19 @@ class UserService {
                 });
                 user.songRefs.push(songRef);
             }
-            return this.updateBy(userId, user)
+            return usersRepository.updateBy(userId, user)
                 .then(user => user.songRefs);
         });
     }
 
     removeSong(userId, songId) {
-        return this.getBy(userId).then(user => {
+        return usersRepository.getBy(userId).then(user => {
             let songRef = user.songRefs.find(s => s.id == songId);
             let ind = user.songRefs.indexOf(songRef);
             if(ind != -1) {
                 user.songRefs.splice(ind, 1);
             }
-            return this.updateBy(userId, user)
+            return usersRepository.updateBy(userId, user)
                 .then(user => user.songRefs);
         });
     }
@@ -56,8 +56,10 @@ class UserService {
 
     _removeOldRate(song, userId) {
         let oldRate = song.userRates.find(r => r.userId == userId);
-        let ind = song.userRates.indexOf(oldRate);
-        song.userRates.splice(ind, 1);
+        if(oldRate) {
+            let ind = song.userRates.indexOf(oldRate);
+            song.userRates.splice(ind, 1);
+        }
     }
 }
 
