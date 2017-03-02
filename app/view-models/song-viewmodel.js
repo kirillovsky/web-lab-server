@@ -46,7 +46,7 @@ SongViewModel.fromSongAndUser = (song, user) => {
     } else {
         result.inCollection = false;
     }
-    
+
     result.userRating = userRate ? userRate.rate : 0;
     result.ratesCount = song.userRates.length;
 

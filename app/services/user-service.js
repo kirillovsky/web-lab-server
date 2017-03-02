@@ -9,6 +9,7 @@ var songsRepository = new SongsRepository();
 
 class UserService {
     updateUserRating(user, songId, newRating) {
+        newRating = Number(newRating);
         return songsRepository.getBy(songId).then(song => {
             this._removeOldRate(song, user.id);
             song.userRates.push({
@@ -46,9 +47,11 @@ class UserService {
         });
     }
 
-    _recalculateGlobalRating(song, newRate) {
-        //return (song.globalRating * song.ratesCount + newRate) / (song.ratesCount + 1);
-        // TODO: Пересчет рейтинга.
+    _recalculateGlobalRating(song) {
+        let ratesSum = song.userRates.map(s => Number(s.rate))
+            .reduce((a, b) => a + b, 0);
+        let newGlobalRate = ratesSum / song.userRates.length;
+        song.globalRating = newGlobalRate;
     }
 
     _removeOldRate(song, userId) {
